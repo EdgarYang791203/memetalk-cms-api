@@ -1,0 +1,19 @@
+{
+  "scripts": {
+    "dev": "npx nodemon --legacy-watch './*.ts' -e ts --exec 'ts-node' ./index.ts",
+    "docker": "docker-compose up --build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "nodemon": "^3.1.7",
+    "prisma": "^5.20.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1"
+  }
+}

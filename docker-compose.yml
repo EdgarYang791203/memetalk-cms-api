@@ -1,0 +1,34 @@
+# 在這裡定義 postgres-store 卷
+volumes:
+  postgres-store:
+services:
+  postgres:
+    image: postgres
+    environment:
+      - POSTGRES_PASSWORD=admin
+    container_name: memetalk-postgres
+    volumes:
+      - postgres-store:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"  # 添加這一行來暴露埠號
+  app:
+    build:
+      context: . # 這裡指定 Dockerfile 的位置
+    ports:
+      - "3000:3000" # 將本地的 3000 埠映射到容器的 3000 埠
+      - "5555:5555" # 暴露 Prisma Studio 的 5555 埠
+    container_name: memetalk-backend
+    environment:
+      - NODE_OPTIONS=--max_old_space_size=2048
+      # - ALLOW_CORS_ORIGIN=$ALLOW_CORS_ORIGIN
+      - DATABASE_URL=$DATABASE_URL
+    volumes:
+      - .:/usr/src/app # 方便在開發時本地修改會立即生效
+    depends_on:
+      - postgres
+    command: >
+      sh -c "
+        npm install &&
+        npx prisma generate &&
+        npm run dev
+      "
