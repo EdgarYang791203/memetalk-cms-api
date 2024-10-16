@@ -183,7 +183,6 @@ apiRouter.get('/hot-meme', async (req: Request, res: Response) => {
         xata_createdat: "asc",
       },
       include: {
-        tags: true,  // 包含關聯的 tags
         comments: true, // 包含關聯的 comments
       },
     });
@@ -197,7 +196,17 @@ apiRouter.get('/hot-meme', async (req: Request, res: Response) => {
       total_like_count: meme.total_like_count,
       liked_user: meme.liked_user,
       hashtag: meme.hashtag,
-      tags: meme.tags ?? [],
+      tags: (() => {
+        try {
+          if (typeof meme.tags === 'string') {
+            return JSON.parse(meme.tags);
+          }
+          return meme.tags || [];  // 若 `tags` 已經是物件，直接返回
+        } catch (error) {
+          console.error('Error parsing tags:', error);
+          return [];
+        }
+      })(),
       comments: meme.comments ?? [],
     }));
     console.log("Fetched memes:", selectedMemes);
@@ -228,6 +237,9 @@ const validationMeme = (payload: Required<MemePost>) => {
   }
   if (payload.hashtag && typeof payload.hashtag !== 'string') {
     return 'hashtag must be type string'
+  }
+  if (typeof payload.tags !== 'object') {
+    return 'hashtag must be type array'
   }
   if (payload.comments && !payload.comments.length) {
     return "Invalid comments format";
@@ -265,16 +277,13 @@ apiRouter.post('/hot-meme', async (req: Request, res: Response) => {
     await prisma.meme.create({
       data: {
         ...newMeme,
-        tags: {
-          create: newMeme.tags.map(tag => ({
-            memeId: newMeme.memeId,
-            title: tag.title,
-          })),
-        },
+        tags: typeof tags === 'object' ? JSON.stringify(tags) : '[]',
         comments: newMeme.comments && newMeme.comments.length ? {
           create: newMeme.comments.map(comment => ({
-            memeId: newMeme.memeId,
-            ...comment,
+            memeId, // 使用外部的 memeId
+            name: comment.name,
+            content: comment.content,
+            avatar: comment.avatar,
           })),
         } : undefined,
       },

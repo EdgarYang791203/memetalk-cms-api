@@ -36,29 +36,21 @@ model Meme {
   memeId            Int @unique
   pageview          Int
   total_like_count  Int
-  tags              Tag[]
+  tags              Json
   liked_user        String[]
   created_date      String
   hashtag           String?
-  comments          Comment[]
+  comments         Comment[]
   @@map("meme")
 }
 
-model Tag {
-  xata_id   String  @id @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))  // 自動生成並設為主鍵
-  title     String
-  memeId    Int     // 關聯到 Meme 的 memeId
-  meme      Meme    @relation(fields: [memeId], references: [memeId], onDelete: Cascade)
-  @@map("tag")
-}
-
 model Comment {
-  xata_id         String   @id @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))  // 自動生成並設為主鍵
-  xata_createdat  DateTime @default(now()) @db.Timestamptz(6)
+  xata_id         String    @unique(map: "comment_xata_id_unique") @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))  // 自動生成並設為主鍵
+  xata_createdat  DateTime  @default(now()) @db.Timestamptz(6)
   name            String
   content         String
   avatar          String?
-  memeId          Int      // 關聯到 Meme 的 memeId
-  meme            Meme     @relation(fields: [memeId], references: [memeId], onDelete: Cascade)
+  memeId          Int       // 關聯到 Meme 的 memeId
+  meme            Meme      @relation(fields: [memeId], references: [memeId], onDelete: Cascade)
   @@map("comment")
 }
