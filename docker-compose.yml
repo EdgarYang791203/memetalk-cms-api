@@ -15,7 +15,7 @@ services:
     build:
       context: . # 這裡指定 Dockerfile 的位置
     ports:
-      - "3000:3000" # 將本地的 3000 埠映射到容器的 3000 埠
+      - "3001:3001" # 將本地的 3001 埠映射到容器的 3001 埠
       - "5555:5555" # 暴露 Prisma Studio 的 5555 埠
     container_name: memetalk-backend
     environment:

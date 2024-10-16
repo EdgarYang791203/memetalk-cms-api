@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  xata_id        String   @unique(map: "_pgroll_new_comments_xata_id_key") @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))
+  xata_id        String   @unique(map: "user_xata_id_unique") @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))
   xata_version   Int      @default(0)
   xata_createdat DateTime @default(now()) @db.Timestamptz(6)
   xata_updatedat DateTime @default(now()) @db.Timestamptz(6)
@@ -23,4 +23,42 @@ model User {
   uid            String @unique
   email          String
   @@map("user")
+}
+
+model Meme {
+  xata_id        String   @id @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))  // 自動生成並設為主鍵
+  xata_version   Int      @default(0)
+  xata_createdat DateTime @default(now()) @db.Timestamptz(6)
+  xata_updatedat DateTime @default(now()) @db.Timestamptz(6)
+  title             String
+  src               String
+  url               String
+  memeId            Int @unique
+  pageview          Int
+  total_like_count  Int
+  tags              Tag[]
+  liked_user        String[]
+  created_date      String
+  hashtag           String?
+  comments          Comment[]
+  @@map("meme")
+}
+
+model Tag {
+  xata_id   String  @id @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))  // 自動生成並設為主鍵
+  title     String
+  memeId    Int     // 關聯到 Meme 的 memeId
+  meme      Meme    @relation(fields: [memeId], references: [memeId], onDelete: Cascade)
+  @@map("tag")
+}
+
+model Comment {
+  xata_id         String   @id @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))  // 自動生成並設為主鍵
+  xata_createdat  DateTime @default(now()) @db.Timestamptz(6)
+  name            String
+  content         String
+  avatar          String?
+  memeId          Int      // 關聯到 Meme 的 memeId
+  meme            Meme     @relation(fields: [memeId], references: [memeId], onDelete: Cascade)
+  @@map("comment")
 }

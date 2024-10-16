@@ -11,8 +11,26 @@ interface UserType {
   email: string;
 }
 
+interface MemePost {
+  title: string;
+  src: string;
+  url: string;
+  memeId: number;
+  pageview: number;
+  total_like_count: number;
+  tags: [] | { id: string; title: string }[];
+  liked_user: string[];
+  created_date: string;
+  hashtag?: string;
+  comments?: {
+    name: string;
+    content: string;
+    avatar?: string;
+  }[];
+}
+
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 const prisma = new PrismaClient();
 
 // 使用 cors 中間件，允許來自 localhost:5173 的請求
@@ -155,6 +173,165 @@ apiRouter.post("/users", async (req: Request, res: Response) => {
     res.status(201).json(newUser);
   } catch {
     res.status(500).send("Internal Server Error");
+  }
+});
+
+apiRouter.get('/hot-meme', async (req: Request, res: Response) => {
+  try {
+    const memes = await prisma.meme.findMany({
+      orderBy: {
+        xata_createdat: "asc",
+      },
+      include: {
+        tags: true,  // 包含關聯的 tags
+        comments: true, // 包含關聯的 comments
+      },
+    });
+    const selectedMemes = memes.map(meme => ({
+      title: meme.title,
+      src: meme.src,
+      url: meme.url,
+      memeId: meme.memeId,
+      created_date: meme.created_date,
+      pageview: meme.pageview,
+      total_like_count: meme.total_like_count,
+      liked_user: meme.liked_user,
+      hashtag: meme.hashtag,
+      tags: meme.tags ?? [],
+      comments: meme.comments ?? [],
+    }));
+    console.log("Fetched memes:", selectedMemes);
+    res.json({ data: selectedMemes });
+  } catch (error: any) {
+    console.error("Error fetching memes:", error.message || error);
+    res.status(500).json({
+      message: "Internal Server Error" ,
+      error: error.message || error,
+    });
+  }
+})
+
+const validationMeme = (payload: Required<MemePost>) => {
+  const verifiedKeys: Array<keyof MemePost> = [
+    "title",
+    "src",
+    "url",
+    "memeId",
+    "created_date",
+  ];
+  for (let index = 0; index < verifiedKeys.length; index++) {
+    const key = verifiedKeys[index];
+    // 檢查欄位是否為空
+    if (!payload[key] || payload[key] === "") {
+      return `${key} is required`; // 直接返回具體錯誤訊息
+    }
+  }
+  if (payload.hashtag && typeof payload.hashtag !== 'string') {
+    return 'hashtag must be type string'
+  }
+  if (payload.comments && !payload.comments.length) {
+    return "Invalid comments format";
+  }
+  return null;
+};
+
+apiRouter.post('/hot-meme', async (req: Request, res: Response) => {
+  const errorMessage = validationMeme(req.body);
+  if (errorMessage) {
+    return res.status(422).json({
+      message: errorMessage,
+    });
+  }
+
+  // 驗證 uid 是否已存在
+  const existingMeme = await prisma.meme.findUnique({
+    where: {
+      memeId: req.body.memeId,
+    },
+  });
+
+  if (existingMeme) {
+    return res.status(409).json({
+      message: "Meme already exists with this memeId",
+    });
+  }
+
+  const { title, src, url, memeId, pageview, total_like_count, tags, liked_user, created_date, hashtag, comments } = req.body;
+
+  try {
+    const newMeme: MemePost = {
+      title, src, url, memeId, pageview, total_like_count, tags, liked_user, created_date, hashtag, comments
+    }
+    await prisma.meme.create({
+      data: {
+        ...newMeme,
+        tags: {
+          create: newMeme.tags.map(tag => ({
+            memeId: newMeme.memeId,
+            title: tag.title,
+          })),
+        },
+        comments: newMeme.comments && newMeme.comments.length ? {
+          create: newMeme.comments.map(comment => ({
+            memeId: newMeme.memeId,
+            ...comment,
+          })),
+        } : undefined,
+      },
+      select: {
+        title: true,
+        src: true,
+        url: true,
+        memeId: true,
+        pageview: true,
+        total_like_count: true,
+        liked_user: true,
+        created_date: true,
+        hashtag: true,
+        tags: true,
+        comments: true,
+      },
+    })
+
+    res.status(201).json(newMeme);
+  } catch (error) {
+    console.error("Error creating meme:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+})
+
+apiRouter.put('/meme/:memeId/like', async (req: Request, res: Response) => {
+  const { uid } = req.body;
+  const { memeId } = req.params;
+
+  try {
+    // 找到當前的 meme 資料
+    const meme = await prisma.meme.findUnique({
+      where: { memeId: Number(memeId) },
+    });
+
+    if (!meme) {
+      return res.status(404).json({ message: "Meme not found" });
+    }
+
+    // 檢查 liked_user 陣列中是否已包含該 uid
+    const isLiked = meme.liked_user.includes(uid);
+
+    // 更新 liked_user 陣列：按讚則加入，取消則移除
+    const updatedMeme = await prisma.meme.update({
+      where: { memeId: Number(memeId) },
+      data: {
+        liked_user: isLiked
+          ? { set: meme.liked_user.filter(user => user !== uid) } // 取消按讚，移除 uid
+          : { push: uid }, // 按讚，將 uid 加入
+      },
+    });
+
+    // 回傳更新後的 meme 資料
+    res.status(200).json(updatedMeme);
+  } catch (error) {
+    console.error("Error updating meme:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
