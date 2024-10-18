@@ -29,6 +29,12 @@ interface MemePost {
   }[];
 }
 
+type Comment = {
+  name: string;
+  content: string;
+  avatar: string;
+}
+
 const app = express();
 const port = process.env.PORT || 3001;
 const prisma = new PrismaClient();
@@ -274,13 +280,13 @@ apiRouter.post('/hot-meme', async (req: Request, res: Response) => {
     const newMeme: MemePost = {
       title, src, url, memeId, pageview, total_like_count, tags, liked_user, created_date, hashtag, comments
     }
+
     await prisma.meme.create({
       data: {
         ...newMeme,
         tags: typeof tags === 'object' ? JSON.stringify(tags) : '[]',
         comments: newMeme.comments && newMeme.comments.length ? {
           create: newMeme.comments.map(comment => ({
-            memeId, // 使用外部的 memeId
             name: comment.name,
             content: comment.content,
             avatar: comment.avatar,
@@ -337,10 +343,78 @@ apiRouter.put('/meme/:memeId/like', async (req: Request, res: Response) => {
     });
 
     // 回傳更新後的 meme 資料
-    res.status(200).json(updatedMeme);
+    res.status(200).json({
+      data: updatedMeme,
+      success: true,
+    });
   } catch (error) {
     console.error("Error updating meme:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+const validationComment = (payload: Required<Comment>) => {
+  if (!payload) return 'request data is required'
+  const verifiedKeys: Array<keyof Comment> = [
+    "name",
+    "content",
+  ];
+  for (let index = 0; index < verifiedKeys.length; index++) {
+    const key = verifiedKeys[index];
+    // 檢查欄位是否為空
+    if (!payload[key] || payload[key] === "") {
+      return `${key} is required`; // 直接返回具體錯誤訊息
+    }
+  }
+  return null;
+};
+
+apiRouter.put('/meme/:memeId/comment', async (req: Request, res: Response) => {
+  const errorMessage = validationComment(req.body?.comment);
+  if (errorMessage) {
+    return res.status(422).json({
+      message: errorMessage,
+    });
+  }
+
+  const { name, content, avatar } = req.body.comment;
+  const { memeId } = req.params;
+
+  try {
+    // 找到當前的 meme 資料
+    const meme = await prisma.meme.findUnique({
+      where: { memeId: Number(memeId) },
+    });
+
+    if (!meme) {
+      return res.status(404).json({ message: "Meme not found" });
+    }
+
+    // 更新 comments 陣列
+    const updatedMeme = await prisma.meme.update({
+      where: { memeId: Number(memeId) },
+      data: {
+        comments: {
+          create: {  // 使用 create 方法來新增評論
+            name,
+            content,
+            avatar,
+          },
+        },
+      },
+      include: {
+        comments: true, // 確保返回時包含 comments 資料
+      },
+    });
+
+    // 回傳更新後的 meme 資料
+    res.status(200).json({
+      data: updatedMeme,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error updating meme:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
