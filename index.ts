@@ -36,7 +36,7 @@ type Comment = {
 }
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 8080;
 const prisma = new PrismaClient();
 
 // 使用 cors 中間件，允許來自 localhost:5173 的請求
