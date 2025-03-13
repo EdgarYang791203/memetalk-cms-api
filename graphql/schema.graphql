@@ -1,0 +1,62 @@
+type User {
+  xata_id: ID!
+  xata_createdat: String
+  displayName: String!
+  photoURL: String
+  uid: String!
+  email: String!
+}
+
+type Comment {
+  name: String!
+  content: String!
+  avatar: String
+}
+
+type MemePost {
+  title: String!
+  src: String!
+  url: String!
+  memeId: Int!
+  pageview: Int!
+  total_like_count: Int!
+  tags: [Tag!]!
+  liked_user: [String!]!
+  created_date: String!
+  hashtag: String
+  comments: [Comment!]
+}
+
+type Tag {
+  id: ID!
+  title: String!
+}
+
+type Query {
+  users: [User!]!
+  user(id: ID!): User
+  hotMemes: [MemePost!]!
+}
+
+type Mutation {
+  createUser(
+    displayName: String!
+    photoURL: String
+    uid: String!
+    email: String!
+  ): User
+
+  likeMeme(memeId: Int!, uid: String!): MemePost
+
+  commentOnMeme(
+    memeId: Int!
+    name: String!
+    content: String!
+    avatar: String
+  ): MemePost
+}
+
+type InhibitString {
+  xata_id: ID!
+  word: String!
+}
