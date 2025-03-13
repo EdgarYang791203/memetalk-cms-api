@@ -182,6 +182,29 @@ apiRouter.post("/users", async (req: Request, res: Response) => {
   }
 });
 
+apiRouter.get('/inhibit-words', async (req: Request, res: Response) => {
+  try {
+    const inhibitWords = await prisma.inhibitString.findMany({
+      orderBy: {
+        xata_createdat: "asc",
+      },
+      select: {
+        xata_id: true,
+        xata_createdat: true,
+        word: true,
+      },
+    })
+    console.log("Fetched inhibit words:", inhibitWords);
+    res.json(inhibitWords);
+  } catch (error: any) {
+    console.error("Error fetching inhibit words:", error.message || error);
+    res.status(500).json({
+      message: "Internal Server Error" ,
+      error: error.message || error,
+    });
+  }
+})
+
 apiRouter.get('/hot-meme', async (req: Request, res: Response) => {
   try {
     const memes = await prisma.meme.findMany({

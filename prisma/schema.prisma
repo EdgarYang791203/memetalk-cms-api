@@ -54,3 +54,12 @@ model Comment {
   meme            Meme      @relation(fields: [memeId], references: [memeId], onDelete: Cascade)
   @@map("comment")
 }
+
+model InhibitString {
+  xata_id        String   @unique(map: "inhibitString_xata_id_unique") @default(dbgenerated("('rec_'::text || (xata_private.xid())::text)"))
+  xata_version   Int      @default(0)
+  xata_createdat DateTime @default(now()) @db.Timestamptz(6)
+  xata_updatedat DateTime @default(now()) @db.Timestamptz(6)
+  word          String
+  @@map("inhibitString")
+}
